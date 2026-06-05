@@ -1,13 +1,64 @@
-# Will hold all financial data
-financial_data = {
-    'gross_income': 0,
-    'net_income': 0,
-    'debt_collection': [],
-    'monthly_debt': 0,
-    'yearly_debt': 0,
-    'tax_percent': 0,
-    'taxed_dollars': 0
-}
+import tkinter as tk
+from tkinter import messagebox, filedialog
+import json
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+class D2I_GUIapp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Debt-to-Income Calculator")
+        self.root.geometry("1050x600")
+        self.root.configure(bg="#f4f4f6")
+
+        #Variables to hold all financial data
+        self.financial_data = {
+            'gross_income': 0.0,
+            'net_income': 0.0,
+            'debt_collection': [],
+            'monthly_debt': 0.0,
+            'yearly_debt': 0.0,
+            'tax_percent': 0.0,
+            'taxed_dollars': 0.0
+        }
+        self.setup_income()
+
+    def make_button(self, parent, text, bg, cmd, side=None, **kwargs):
+        button = tk.Button(parent, text=text, bg=bg, fg="white", command=cmd, font=("Arial", 10))
+        if bg != "#f1c40f":
+            bg = "black"
+            button.configure(bg=bg)
+        button.pack(side=side, fill=tk.X, expand=True, padx=2, **kwargs)
+        return button
+
+    def setup_income(self):
+        #Left Panel
+        left_panel = tk.Frame(self.root, bg="#ffffff", width=360, bd=1, relief=tk.SOLID)
+        left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
+        left_panel.pack_propagate(False)
+
+        """Label in left panel"""
+        tk.Label(left_panel, text="Financial Input", font=("Arial", 14, "Bold"), bg="#ffffff").pack(pady=10)
+
+        #Right panel
+        right_panel = tk.Frame(self.root, bg="#f4f4f6")
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        """Chart frame in the right panel"""
+        self.chart_frame = tk.Frame(right_panel, bg="#ffffff", bd=1, relief=tk.SOLID)
+        self.chart_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        """Dynamic sidebar frame in the right panel"""
+        sidebar = tk.Frame(right_panel, bg="#ffffff")
+        sidebar.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
+        sidebar.pack.propagate(False)
+
+        """Breakdown inside the sidebar"""
+        self.side_title = tk.Label(sidebar, text="Financial Breakdown", font=("Arial", 14, "Bold"), bg="#ffffff")
+        self.side_title.pack(pady=10)
+        self.side_text = tk.Text(sidebar, font=("Courier", 9), bg="#ffffff", bd=0, wrap=tk.WORD)
+        self.side_text.pack(fill=tk.BOTH, expand=True, padx=10)
+
 
 def main_menu():
     global financial_data
@@ -167,4 +218,7 @@ def check_ito_ratio():
     print("Thank you and I hope this was able to help you! press any button to return to the main menu.")
     input()
 
-main_menu()
+if __name__ == "__main__":
+    tk.Tk()
+    D2I_GUIapp(tk.Tk()).mainloop()
+#main_menu()
