@@ -23,7 +23,7 @@ class D2I_GUIapp:
         }
         self.setup_income()
 
-    def make_button(self, parent, text, bg, cmd, side=None, **kwargs):
+    def make_btn(self, parent, text, bg, cmd, side=None, **kwargs):
         button = tk.Button(parent, text=text, bg=bg, fg="white", command=cmd, font=("Arial", 10))
         if bg != "#f1c40f":
             bg = "black"
@@ -32,13 +32,50 @@ class D2I_GUIapp:
         return button
 
     def setup_income(self):
+        labels = [
+            ("(Optional) Gross Income:", "gross", tk.Entry),
+            ("Net Income:", "net", tk.Entry),
+            ("Pay interval:", "interval", tk.Entry)
+        ]
+    
         #Left Panel
         left_panel = tk.Frame(self.root, bg="#ffffff", width=360, bd=1, relief=tk.SOLID)
         left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
         left_panel.pack_propagate(False)
 
-        """Label in left panel"""
-        tk.Label(left_panel, text="Financial Input", font=("Arial", 14, "Bold"), bg="#ffffff").pack(pady=10)
+        """Income input Label in left panel"""
+        tk.Label(left_panel, text="Financial Input", font=("Arial", 14, "bold"), bg="#ffffff").pack(pady=10)
+
+        self.gross_input, self.net_input, self.interval_input = self.inputs["gross"], self.inputs["net"], self.inputs.get("interval_menu").cget("textvariable")
+
+        self.inputs = {}
+        for label_text, key, widget_type in labels:
+            tk.Label(left_panel, text=label_text, font=("Arial", 10), bg="#ffffff").pack(anchor="w", padx=20, pady=(5, 0))
+            if widget_type == tk.Entry:
+                self.inputs[key] = tk.Entry(left_panel, font=("Arial", 10))
+                if key == "gross": self.inputs[key].insert(0, "0")
+            else:
+                self.inputs[key] = tk.StringVar(value="Monthly")
+                self.inputs[key + "_menu"] = tk.OptionMenu(left_panel, self.inputs[key], "Weekly", "Bi-Weekly", "Monthly")
+                self.inputs[key] = self.inputs[key + "_menu"]
+            self.inputs[key].pack(fill=tk.X, padx=20, pady=2)
+
+        """Debt input section in left panel"""
+        tk.Label(left_panel, text="Add Monthly Debt:", font=("Arial", 9), bg="#ffffff").pack(anchor="w", padx=20, pady=(10,0))
+        self.debt_input = tk.Entry(left_panel, font=("Arial", 10))
+        self.debt_input.pack(fill=tk.X, padx=20, pady=2)
+
+        """Add debt button in left panel"""
+        debt_btn_frame = tk.Frame(left_panel, bg="#ffffff")
+        debt_btn_frame.pack(fill=tk.X, padx=20, pady=5)
+        self.make_btn(debt_btn_frame, "Add Debt", "#2ecc71", self.add_debt, tk.LEFT)
+        self.make_btn(debt_btn_frame, "Undo Last Debt", "#e74c3c", self.undo_debt, tk.RIGHT)
+
+        self.debt_listbox = tk.Listbox(left_panel, height=4, font=("Arial", 9))
+        self.debt_listbox.pack(fill=tk.X, padx=20, pady=5)
+
+        self.make_btn(left_panel, "Calculate and update chart", "#3498db", self.process_calculations, pady=10)
+        self.make_btn(left_panel, "Undo last debt entry", "#7f8c8d", self.undo_debt)
 
         #Right panel
         right_panel = tk.Frame(self.root, bg="#f4f4f6")
@@ -54,12 +91,73 @@ class D2I_GUIapp:
         sidebar.pack.propagate(False)
 
         """Breakdown inside the sidebar"""
-        self.side_title = tk.Label(sidebar, text="Financial Breakdown", font=("Arial", 14, "Bold"), bg="#ffffff")
+        self.side_title = tk.Label(sidebar, text="Financial Breakdown", font=("Arial", 14, "bold"), bg="#ffffff")
         self.side_title.pack(pady=10)
         self.side_text = tk.Text(sidebar, font=("Courier", 9), bg="#ffffff", bd=0, wrap=tk.WORD)
         self.side_text.pack(fill=tk.BOTH, expand=True, padx=10)
 
+    def add_debt(self):
+        try:
+            debt_amount = float(self.debt_input.get())
+            if debt_amount <= 0:
+                raise ValueError
+            self.financial_data['debt_collection'].append(debt_amount)
+            self.debt_listbox.insert(tk.END, f"${debt_amount:.2f} / month")
+            self.debt_input.delete(0, tk.END)
+        except ValueError:
+            # Handle non-numeric input for debt with an error message
+            messagebox.showerror("Error", "Enter a valid positive number for debt.")            
 
+    def undo_debt(self):
+        if self.financial_data['debt_collection']:
+            self.financial_data['debt_collection'].pop()
+            self.debt_listbox.delete(tk.END)
+        else:
+            messagebox.showwarning("There are debts to remove.")
+
+    #Clear debt
+    
+    def calculate_income(self):
+        try:
+            gross_income = float(self.gross_input.get() if self.gross_input.get() else 0)
+            net_income = float(self.net_input.get())
+
+            if net_income <= 0:
+                messagebox.showerror("Value Error", "Income cannot be less than one.")
+                return
+            elif gross_income < net_income and gross_income > 0:
+                messagebox.showerror("Value Error", "Gross income cannot be less than net income")
+                return
+            
+            interval = self.interval_input.get()
+            if interval == "Weekly":
+                multiplier = 52
+            elif interval == "Bi-Weekly":
+                multiplier = 26
+            else:
+                multiplier = 12
+
+            annual_gross = (gross_income * multiplier)
+            annual_net = (net_income * multiplier)
+
+            if annual_gross > annual_net:
+                self.financial_data['tax_percent'] = (((annual_gross - annual_net) / annual_gross) * 100)
+                self.financial_data['taxed_dollars'] = (annual_gross - annual_net)
+            else:
+                self.financial_data['tax_percent'] = 0.0
+                self.financial_data['taxed_dollars'] = 0.0
+
+                self.financial_data['gross_income'] = annual_gross
+                self.financial_data['net_income'] = annual_net
+                self.financial_data['monthly_debt'] = sum(self.financial_data['debt_collection'])
+                self.financial_data['yearly_debt'] = (self.financial_data['monthyl_debt'] * 12)
+
+                self.render_chart()
+                self.update_sidebar_display("Overall Stats:", self.generate_breakdown_string('all'))
+        except ValueError:
+            messagebox.showerror("Input Error", "Please put in the correct numbers")
+
+"""
 def main_menu():
     global financial_data
     while True:
@@ -83,104 +181,6 @@ def main_menu():
             break
         else:
             print("Invalid choice. Please try again.")
-
-def enter_income():
-    global financial_data
-    while True:
-        # Prompt user for gross and net income
-        try:
-            print(f"Your gross income is: {financial_data['gross_income']}")
-            gross_income = input('(OPTIONAL) Please enter your gross income, "clear" to wipe all data, "back" to go back, otherwise enter "0": ').lower()
-            # If user wants to clear data they can type clear, reset, or delete
-            if gross_income in ["clear", "reset", "delete"]:
-                financial_data['gross_income'] = 0
-                financial_data['net_income'] = 0
-                financial_data['gross_income'] = 0
-                print("Income data has been cleared.")
-                continue
-            elif gross_income == 'back':
-                # Go back to main menu
-                return
-            print(f"Your net-income is: {financial_data['net_income']}")
-            net_income = float(input("Please enter your net income: "))
-            gross_income = float(gross_income)
-            print(f"Your net income is: {net_income}")
-            if gross_income > net_income and net_income > 0: 
-                # Calculate tax percentage and taxed dollars and store in financial_data
-                financial_data['tax_percent'] = ((gross_income - net_income) / gross_income) * 100
-                financial_data['taxed_dollars'] = gross_income - net_income
-                print(f"your gross income is: {gross_income:.2f} and your net income is: {net_income:.2f}")
-                print(f"Your tax percentage is: {financial_data['tax_percent']:.2f}% and the amount of taxed dollars is: ${financial_data['taxed_dollars']:.2f}!")
-                financial_data['gross_income'] = gross_income
-                financial_data['net_income'] = net_income
-            elif gross_income == 0 and net_income > 0:
-                # If gross income is 0, gross income and tax percent are ignored
-                financial_data['net_income'] = net_income
-                print(f"Your net-income is {net_income:.2f}")
-            elif gross_income > 1 and gross_income < net_income:
-                # Gross income must be greater than net income if both are provided
-                print("Gross income must be greater than net income. Please try again.")
-                continue
-            else:
-                # Handle zero or negative income values with an error message
-                print("0 or Negative values are not allowed. Please try again.")
-                continue
-            while True:
-                # Prompt user for time interval and convert income to yearly
-                time_interval = input("Enter time interval (weekly, bi-weekly, monthly or yearly: ").lower()
-                if time_interval == 'weekly':
-                    financial_data['gross_income'] *= 52
-                    financial_data['net_income'] *= 52
-                    return
-                elif time_interval == 'bi-weekly' or time_interval == 'biweekly':
-                    financial_data['gross_income'] *= 26
-                    financial_data['net_income'] *= 26
-                    return
-                elif time_interval == 'monthly':
-                    financial_data['gross_income'] *= 12
-                    financial_data['net_income'] *= 12
-                    return
-                elif time_interval == 'yearly' or time_interval == 'annually':
-                    return
-                else:
-                    # Handle invalid time interval input with an error message
-                    print("Invalid time interval. Please try again.")
-                    continue
-        except ValueError:
-            # Handle non-numeric input for income with an error message
-            print("Invalid input. Please enter numeric values for income.")
-            continue
-
-def enter_debt():
-    global financial_data
-    while True:
-        # Prompt user to enter debt amounts or commands to finish or undo
-        user_command = input(f'Enter monthly debt amount or “finish” to finish or “undo” to remove last input: ').lower()
-        if user_command == 'finish':
-            break
-        elif user_command == 'undo' or user_command == 'remove' or user_command == 'delete':
-            if financial_data['debt_collection']:
-                removed_debt = financial_data['debt_collection'].pop()
-                print(f"Removed last debt entry: ${removed_debt:.2f}")
-            else:
-                print("No debt entries to remove.")
-            continue
-        else:
-            try:
-                debt_amount = float(user_command)
-                if debt_amount <= 0:
-                    # Handle zero or negative debt values with an error message
-                    print("Please enter a positive value for debt.")
-                    continue
-                financial_data['debt_collection'].append(debt_amount)
-                print(f"Added debt entry: ${debt_amount:.2f}")
-            except ValueError:
-                # Handle non-numeric input for debt with an error message
-                print("Invalid input. Please enter a numeric value for debt, 'finish', or 'undo'.")
-                continue
-    financial_data['monthly_debt'] = sum(financial_data['debt_collection'])
-    financial_data['yearly_debt'] = financial_data['monthly_debt'] * 12
-    print(f"Your total monthly debt is: ${financial_data['monthly_debt']:.2f} and your total yearly debt is: ${financial_data['yearly_debt']:.2f}")
 
 def check_ito_ratio():
     global financial_data
@@ -217,6 +217,7 @@ def check_ito_ratio():
         print("Woah! You are spending more than you make! Either reduce your expenses or consider getting another job.")
     print("Thank you and I hope this was able to help you! press any button to return to the main menu.")
     input()
+"""
 
 if __name__ == "__main__":
     tk.Tk()
