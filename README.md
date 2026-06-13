@@ -11,3 +11,7 @@ I could add priority flags into the program so that some things could flagged di
 ## Update: 6/7/26
 
 I think the GUI looks really dated, I plan to modernize it so that it doesnt look like an old sketchy program. I believe a GUI update would help this program look more presentable in a way that users can trust. Perhaps I could add some colors to give it a "brand" look and also make the buttons and listbox look more modern as well.
+
+## Update: 6/12/26
+
+I removed the spaces between the '=' of the code inside of parameters. Theres no practical use for it, but it makes the code look more intentional. Updated the GUI to look more modern, it now has color implemented and the buttons are color coded to visually show what they may do. In order to do this I had to rewrite some of the code to support ttk instead of tk. My next plan is to have the cursor change if over a button or dropdown menu (options included).
