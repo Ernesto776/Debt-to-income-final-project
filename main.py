@@ -14,7 +14,10 @@ class D2I_GUIapp:
     def __init__(self, root):
         self.root = root
         self.root.title("Debt-to-Income Calculator")
-        self.root.geometry("1050x600")
+        try:
+            self.root.state('zoomed')
+        except tk.TclError:
+            root.wm_attributes("-zoomed", True)
         self.root.configure(bg=COLOR_BG_LIGHT)
     
         if "Segoe UI" in self.root.tk.call("font", "families"):
@@ -107,7 +110,7 @@ class D2I_GUIapp:
         
         ttk.Button(debt_btn_frame, text="Undo Last Debt", style="Danger.TButton",
                 command=self.undo_debt).pack(side=tk.RIGHT, fill=tk.X, 
-                expand=True, padx=(0, 4))
+                expand=True, padx=(0, 4), pady=3)
     
         #The Debt listbox
         self.debt_listbox = tk.Listbox(left_panel, height=4, font=(self.font_family, 9), 
