@@ -173,6 +173,18 @@ class D2I_GUIapp:
             # Handle non-numeric input for debt with an error message
             messagebox.showerror("Error", "Enter a valid positive number for debt.")            
 
+    def debt_categorization(self):
+        popup = tk.Toplevel(self.root)
+        popup.title('Debt type')
+        popup.geometry('340x380')
+        popup.resizable(False, False)
+        popup.grab_set()
+        
+        popup.configure('white')
+
+
+        category_types = ['Bills', 'Transportation', 'Entertainment', 'Food/Restaurants']
+
     def undo_debt(self):
         if self.financial_data['debt_collection']:
             self.financial_data['debt_collection'].pop()

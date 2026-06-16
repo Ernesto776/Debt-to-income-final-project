@@ -7,7 +7,7 @@ def save_file(app):
     if path: 
         with open(path, 'w') as f:
             json.dump(app.financial_data, f, indent=4)
-        messagebox.showinfo("Success", "Data saved                                                                                                                                                                                                                                                                                  successfully!")
+        messagebox.showinfo("Success", "Data saved successfully!")
 
 def load_file(app):
     path = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
