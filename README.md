@@ -11,3 +11,14 @@ I could add priority flags into the program so that some things could flagged di
 # Update: 6/7/26
 
 The GUI is now functional, it works but it's very basic. I created a seperate branch in order to categorize the debts differently. This would mean that I would also need the user to name the debt as well, however, if i did that then the pie chart would probably look messy potentially having hundreds of slices. This would mean that I should implement categories to create less visual clutter. If I did that, then maybe i could implement a seperate pie chart to show the contents in that slice alone.
+## Update: 6/7/26 (GUI branch)
+
+I think the GUI looks really dated, I plan to modernize it so that it doesnt look like an old sketchy program. I believe a GUI update would help this program look more presentable in a way that users can trust. Perhaps I could add some colors to give it a "brand" look and also make the buttons and listbox look more modern as well.
+
+## Update: 6/12/26 (GUI branch)
+
+I removed the spaces between the '=' of the code inside of parameters. Theres no practical use for it, but it makes the code look more intentional. Updated the GUI to look more modern, it now has color implemented and the buttons are color coded to visually show what they may do. In order to do this I had to rewrite some of the code to support ttk instead of tk. My next plan is to have the cursor change if over a button or dropdown menu (options included). I accidentally made the program fullscreen instead of windowed fullscreen and it dawned on me that I never implemented a way to exit the program. Thankfully I Alt+f4'd out but most users dont know that, perhaps I could add an exit button or more likely I will add a menu bar on the top of the screen seen in most applications. I added two versions of windowed fullscreen in order to achieve higher compatability.
+
+## Update: 6/15/26 (GUI branch)
+
+Theres a QoL issue in the dropdown menu which is shown when the menu is extended, tapping the menu again does not get rid of the extended menu. Merged the GUI branch with the feature branch.

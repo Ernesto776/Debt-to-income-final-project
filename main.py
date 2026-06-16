@@ -1,15 +1,29 @@
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import create_and_get_files as file_utils
+
+COLOR_BG_DARK = "#1e1e24"
+COLOR_BG_LIGHT = "#f8f9fa"
+COLOR_PRIMARY = "#2b5c8f"
+COLOR_SUCCESS = "#2a8a5e"
+COLOR_ACCENT = "#d9534f"
 
 class D2I_GUIapp:
     def __init__(self, root):
         self.root = root
         self.root.title("Debt-to-Income Calculator")
-        self.root.geometry("1050x600")
-        self.root.configure(bg="#f4f4f6")
+        try:
+            self.root.state('zoomed')
+        except tk.TclError:
+            root.wm_attributes("-zoomed", True)
+        self.root.configure(bg=COLOR_BG_LIGHT)
+    
+        if "Segoe UI" in self.root.tk.call("font", "families"):
+            self.font_family = "Segoe UI"
+        else:
+            self.font_family = "Arial"
 
         #Variables to hold all financial data
         self.financial_data = {
@@ -21,87 +35,131 @@ class D2I_GUIapp:
             'tax_percent': 0.0,
             'taxed_dollars': 0.0
         }
+
+        #Updates the GUI with set colors
+        self.style = ttk.Style()
+        self.style.theme_use("clam")
+        self.style.configure(".", font=(self.font_family, 10), background=COLOR_BG_LIGHT)
+        self.style.configure("TLabel", background=COLOR_BG_LIGHT, foreground="#333333")
+        self.style.configure("Header.TLabel", font=(self.font_family, 14, "bold"), background=COLOR_BG_LIGHT, foreground=COLOR_PRIMARY)
+        self.style.configure("SidebarHeader.TLabel", font=(self.font_family, 14, "bold"), background=COLOR_BG_DARK, foreground="white")
+
+        #Button style update
+        self.style.configure("Primary.TButton", background=COLOR_PRIMARY, foreground="white", borderwidth=0, focuscolor="none")
+        self.style.map("Primary.TButton", background=[("active", "#1f446b")])
+        self.style.configure("Success.TButton", background=COLOR_SUCCESS, foreground="white", borderwidth=0)
+        self.style.map("Success.TButton", background=[("active", "#1e6343")])
+        self.style.configure("Danger.TButton", background=COLOR_ACCENT, foreground="white", borderwidth=0)
+        self.style.map("Danger.TButton", background=[("active", "#b33c39")])
+    
         self.setup_income()
 
-    def make_btn(self, parent, text, bg, cmd, side=None, **kwargs):
-        button = tk.Button(parent, text=text, bg=bg, fg="white", command=cmd, font=("Arial", 10))
-        if bg != "#f1c40f":
-            bg = "black"
-            button.configure(bg=bg)
-        button.pack(side=side, fill=tk.X, expand=True, padx=2, **kwargs)
-        return button
+    def create_input_fields(self, parent, label_text, is_dropdown=False, dropdown_var=None, dropdown_options=None):
+        ttk.Label(parent, text=label_text, font=(self.font_family, 9, "bold"), background="white").pack(anchor="w", padx=25, pady=(5, 2))
 
-    def setup_income(self):
-        labels = [
-            ("(Optional) Gross Income:", "gross", tk.Entry),
-            ("Net Income:", "net", tk.Entry),
-            ("Pay interval:", "interval", tk.OptionMenu)
-        ]
-    
-        #Left Panel
-        left_panel = tk.Frame(self.root, bg="#ffffff", width=360, bd=1, relief=tk.SOLID)
+        if is_dropdown:
+            widget = ttk.OptionMenu(parent, dropdown_var, dropdown_options[0], *dropdown_options)
+            widget.pack(fill=tk.X, padx=25, pady=(0, 20))
+        else:
+            widget = ttk.Entry(parent, font=(self.font_family, 10))
+            widget.pack(fill=tk.X, padx=25, pady=(0, 12))
+        return widget
+
+    def setup_income(self):    
+        """Left Panel"""
+        left_panel = tk.Frame(self.root, bg="white", width=360, bd=1, relief=tk.SOLID)
         left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=10)
         left_panel.pack_propagate(False)
 
-        """Income input Label in left panel"""
-        tk.Label(left_panel, text="Financial Input", font=("Arial", 14, "bold"), bg="#ffffff").pack(pady=10)
-        self.inputs = {}
+        #Boundry line
+        tk.Frame(self.root, bg="#e0e0e0", width=1).pack(side=tk.LEFT, fill=tk.Y)
 
+        ttk.Label(left_panel, text="Financial Input", style="Header.TLabel",
+                background="white").pack(pady=(20, 15), padx=25, anchor="w")
+
+        #(Optional) Gross input
+        self.gross_input = self.create_input_fields(left_panel, "(Optional) Gross Income:")
+        self.gross_input.insert(0, "0")
+
+        #Net income input
+        self.net_input = self.create_input_fields(left_panel, "Insert net income:")
+
+        #Income interval
         self.interval_input = tk.StringVar(value="Weekly")
+        self.interval_dropdown = self.create_input_fields(
+            left_panel, "Pay frequency interval:",
+            is_dropdown=True, dropdown_var=self.interval_input,
+            dropdown_options=["Weekly", "Bi-Weekly", "Monthly"]
+        )
 
-        for label_text, key, widget_type in labels:
-            tk.Label(left_panel, text=label_text, font=("Arial", 10), bg="#ffffff").pack(anchor="w", padx=20, pady=(5, 0))
-            if widget_type == tk.Entry:
-                self.inputs[key] = tk.Entry(left_panel, font=("Arial", 10))
-                if key == "gross": self.inputs[key].insert(0, "0")
-                self.inputs[key].pack(fill=tk.X, padx=20, pady=2)
-            else:
-                self.inputs[key] = tk.OptionMenu(left_panel, self.interval_input, "Weekly", "Bi-Weekly", "Monthly")
-                self.inputs[key].pack(fill=tk.X, padx=20,pady=2)
+        #Debt input section
+        tk.Frame(left_panel, bg="#eef2f5", height=2).pack(fill=tk.X, padx=20, pady=(10,0))
 
-        self.gross_input = self.inputs["gross"]
-        self.net_input = self.inputs["net"]
+        ttk.Label(left_panel, text="Add debts:", font=(self.font_family, 10, "bold"), 
+                background="white").pack(anchor="w", padx=20, pady=2)
 
-        """Debt input section in left panel"""
-        tk.Label(left_panel, text="Add Monthly Debt:", font=("Arial", 9), bg="#ffffff").pack(anchor="w", padx=20, pady=(10,0))
-        self.debt_input = tk.Entry(left_panel, font=("Arial", 10))
-        self.debt_input.pack(fill=tk.X, padx=20, pady=2)
+        self.debt_input = self.create_input_fields(left_panel, "Monthly debt value:")
 
-        """Add debt button in left panel"""
-        debt_btn_frame = tk.Frame(left_panel, bg="#ffffff")
+        #Add debt buttons
+        debt_btn_frame = tk.Frame(left_panel, bg="white")
         debt_btn_frame.pack(fill=tk.X, padx=20, pady=5)
-        self.make_btn(debt_btn_frame, "Add Debt", "#2ecc71", self.add_debt, tk.LEFT)
-        self.make_btn(debt_btn_frame, "Undo Last Debt", "#e74c3c", self.undo_debt, tk.RIGHT)
 
-        self.debt_listbox = tk.Listbox(left_panel, height=4, font=("Arial", 9))
+        ttk.Button(debt_btn_frame, text="Add Debt", style="Success.TButton",
+                command=self.add_debt).pack(side=tk.LEFT, 
+                fill=tk.X, expand=True, padx=(4, 0))
+        
+        ttk.Button(debt_btn_frame, text="Undo Last Debt", style="Danger.TButton",
+                command=self.undo_debt).pack(side=tk.RIGHT, fill=tk.X, 
+                expand=True, padx=(0, 4), pady=3)
+    
+        #The Debt listbox
+        self.debt_listbox = tk.Listbox(left_panel, height=4, font=(self.font_family, 9), 
+                bd=1, relief=tk.SOLID, highlightthickness=0, fg="#555555")
         self.debt_listbox.pack(fill=tk.X, padx=20, pady=5)
 
-        self.make_btn(left_panel, "Calculate and update chart", "#3498db", self.calculate_income, pady=10)
-        self.make_btn(left_panel, "Undo last debt entry", "#7f8c8d", self.undo_debt)
+        #Calculate button
+        ttk.Button(left_panel, text="Calculate and update chart", 
+                style="Primary.TButton", command=self.calculate_income
+                ).pack(fill=tk.X, padx=25, pady=(15,10), ipady=4)
 
-        storage_frame = tk.Frame(left_panel, bg="#ffffff")
+        #Storage buttons
+        storage_frame = tk.Frame(left_panel, bg="white")
         storage_frame.pack(fill=tk.X, padx=20, pady=5)
-        self.make_btn(storage_frame, "Save File", "#9b59b6", lambda: file_utils.save_file(self), tk.LEFT)
-        self.make_btn(storage_frame, "Load File", "#f1c40f", lambda: file_utils.load_file(self), tk.RIGHT)
 
-        #Right panel
-        right_panel = tk.Frame(self.root, bg="#f4f4f6")
+        self.save_file = ttk.Button(storage_frame, text="Save File", 
+                command=lambda: file_utils.save_file(self)
+                )
+        self.save_file.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,4))
+        
+        self.load_file = ttk.Button(storage_frame, text="Load File", 
+                command=lambda: file_utils.load_file(self))
+        self.load_file.pack(side=tk.RIGHT, fill=tk.X, expand=True, padx=(4,0))
+
+        """Right panel"""
+        right_panel = tk.Frame(self.root, background=COLOR_BG_LIGHT)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        """Chart frame in the right panel"""
-        self.chart_frame = tk.Frame(right_panel, bg="#ffffff", bd=1, relief=tk.SOLID)
-        self.chart_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        #Chart frame
+        self.chart_frame = tk.Frame(right_panel, bg="white", bd=0)
+        self.chart_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        self.placeholder_label = tk.Label(self.chart_frame, text="Insert information to have the data appear",
+                font=(self.font_family, 11, "italic"), bg="white", fg="#888888")
+        self.placeholder_label.pack(expand=True)
         
-        """Dynamic sidebar frame in the right panel"""
-        sidebar = tk.Frame(right_panel, bg="#ffffff", width=280, bd=1, relief=tk.SOLID)
+        #Dynamic sidebar frame
+        sidebar = tk.Frame(right_panel, bg=COLOR_BG_DARK, width=280)
         sidebar.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
         sidebar.pack_propagate(False)
 
-        """Breakdown inside the sidebar"""
-        self.side_title = tk.Label(sidebar, text="Financial Breakdown", font=("Arial", 14, "bold"), bg="#ffffff")
-        self.side_title.pack(pady=10)
-        self.side_text = tk.Text(sidebar, font=("Courier", 9), bg="#ffffff", bd=0, wrap=tk.WORD)
-        self.side_text.pack(fill=tk.BOTH, expand=True, padx=10)
+        #Breakdown inside the sidebar
+        self.side_title = tk.Label(sidebar, text="Financial Breakdown", 
+                font=(self.font_family, 14, "bold"), bg=COLOR_BG_DARK, fg="white")
+        self.side_title.pack(pady=(25,15), padx=20, anchor="w")
+        self.side_text = tk.Text(sidebar, font=("Courier New", 9), bg=COLOR_BG_DARK, 
+                fg="White", bd=0, wrap=tk.WORD, highlightthickness=0)
+        self.side_text.pack(fill=tk.BOTH, expand=True, padx=25, pady=(0, 20))
+        self.update_sidebar("System standby", ["Waiting for user inputs"])
 
     def add_debt(self):
         try:
@@ -120,10 +178,8 @@ class D2I_GUIapp:
             self.financial_data['debt_collection'].pop()
             self.debt_listbox.delete(tk.END)
         else:
-            messagebox.showwarning("There are debts to remove.")
+            messagebox.showwarning("Undo debt error", "There are no debts to remove.")
 
-    #Clear debt
-    
     def calculate_income(self):
         try:
             gross_income = float(self.gross_input.get() if self.gross_input.get() else 0)
@@ -132,7 +188,7 @@ class D2I_GUIapp:
             if net_income <= 0:
                 messagebox.showerror("Value Error", "Income cannot be less than one.")
                 return
-            elif gross_income < net_income and gross_income > 0:
+            elif 0 < gross_income < net_income:
                 messagebox.showerror("Value Error", "Gross income cannot be less than net income")
                 return
             
@@ -159,6 +215,10 @@ class D2I_GUIapp:
             self.financial_data['monthly_debt'] = sum(self.financial_data['debt_collection'])
             self.financial_data['yearly_debt'] = (self.financial_data['monthly_debt'] * 12)
 
+            if self.placeholder_label:
+                self.placeholder_label.destroy()
+                self.placeholder_label = None
+
             self.render_chart()
             self.update_sidebar("Overall Stats:", self.get_breakdown('all'))
         except ValueError:
@@ -175,20 +235,23 @@ class D2I_GUIapp:
         #label setup
         labels = ['Total debt', 'Remaining money']
         sizes = [yearly_debt, max(0, remainder)]
-        colors=['#c0392b', '#2ecc71']
+        colors=[COLOR_ACCENT, COLOR_PRIMARY]
 
         if remainder < 0:
-            labels = ['Negative by: ']
-            sizes = [yearly_debt]
-            colors = ['#c0392b']
+            labels = ['Negative by: ', 'Money left over: ']
+            sizes = [yearly_debt, max(0, remainder)]
+            colors = [COLOR_ACCENT, COLOR_PRIMARY]
 
         fig, ax = plt.subplots(figsize=(4, 4), dpi=100)
+        fig.patch.set_facecolor("white")
+
         wedges, _, _ = ax.pie(
             sizes, labels=labels, autopct='%1.1f%%',
             startangle=140, colors=colors,
+            textprops={'fontname':self.font_family, 'fontsize':9, 'weight':'bold'},
             wedgeprops=dict(width=0.4, edgecolor='w', picker=True)
         )
-        ax.set_title("Annual Finance tracker")
+        ax.set_title("Annual Finance tracker", fontname=self.font_family, fontsize=11, weight='bold', color="#444444")
 
         def hover_display(event):
             if event.inaxes == ax:
@@ -197,7 +260,7 @@ class D2I_GUIapp:
                     if contained:
                         wedge.set_alpha(0.7)
                         label_target = labels[i]
-                        context = 'debt' if 'debt' in label_target else 'liquid'
+                        context = 'debt' if 'debt' in label_target.lower() else 'liquid'
                         self.update_sidebar(label_target, self.get_breakdown(context))
                         fig.canvas.draw_idle()
                         return
@@ -238,7 +301,6 @@ class D2I_GUIapp:
         liquid_breakdown.extend([
             "",
             "REMAINING SPENDING MONEY",
-
             f"Monthly:     ${rem/12:.2f}",
             f"Weekly:      ${rem/52:.2f}",
             f"Daily:       ${rem/365:.2f}"
