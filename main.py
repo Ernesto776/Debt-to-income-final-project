@@ -3,6 +3,7 @@ from tkinter import messagebox, ttk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import create_and_get_files as file_utils
+from debt_manager import DebtManager
 
 COLOR_BG_DARK = "#1e1e24"
 COLOR_BG_LIGHT = "#f8f9fa"
@@ -12,6 +13,8 @@ COLOR_ACCENT = "#d9534f"
 
 class D2I_GUIapp:
     def __init__(self, root):
+        self.debt_mgr = DebtManager(self)
+
         self.root = root
         self.root.title("Debt-to-Income Calculator")
         try:
@@ -54,15 +57,16 @@ class D2I_GUIapp:
     
         self.setup_income()
 
-    def create_input_fields(self, parent, label_text, is_dropdown=False, dropdown_var=None, dropdown_options=None):
-        ttk.Label(parent, text=label_text, font=(self.font_family, 9, "bold"), background="white").pack(anchor="w", padx=25, pady=(5, 2))
+    def create_input_fields(self, parent, label_text, is_dropdown=False, dropdown_var=None, dropdown_options=None, padding_bottom=12):
+        ttk.Label(parent, text=label_text, font=(self.font_family, 9, "bold"), 
+                background="white").pack(anchor="w", padx=25, pady=(5, 2))
 
         if is_dropdown:
             widget = ttk.OptionMenu(parent, dropdown_var, dropdown_options[0], *dropdown_options)
-            widget.pack(fill=tk.X, padx=25, pady=(0, 20))
+            widget.pack(fill=tk.X, padx=25, pady=(0, padding_bottom))
         else:
             widget = ttk.Entry(parent, font=(self.font_family, 10))
-            widget.pack(fill=tk.X, padx=25, pady=(0, 12))
+            widget.pack(fill=tk.X, padx=25, pady=(0, padding_bottom))
         return widget
 
     def setup_income(self):    
@@ -93,34 +97,77 @@ class D2I_GUIapp:
         )
 
         #Debt input section
-        tk.Frame(left_panel, bg="#eef2f5", height=2).pack(fill=tk.X, padx=20, pady=(10,0))
+        tk.Frame(left_panel, bg="#eef2f5", height=2).pack(fill=tk.X, padx=20, pady=(5,5))
 
-        ttk.Label(left_panel, text="Add debts:", font=(self.font_family, 10, "bold"), 
-                background="white").pack(anchor="w", padx=20, pady=2)
+        ttk.Label(left_panel, text="Add debts:", style="Header.TLabel", 
+                background="white").pack(anchor="w", padx=25, pady=(5,5))
+        
+        self.debt_name_input = self.create_input_fields(left_panel, "Name / label",
+                padding_bottom=6)
+        self.debt_amount_input = self.create_input_fields(left_panel, "Monthly debt value:",
+                padding_bottom=6)
+        
+        self.debt_cat_var = tk.StringVar(value="Bills")
+        self.debt_cat_dropdown = self.create_input_fields(
+            left_panel, "Category classification:",
+            is_dropdown=True, dropdown_var=self.debt_cat_var,
+            dropdown_options=self.debt_mgr.categories,
+            padding_bottom=6
+        )
 
-        self.debt_input = self.create_input_fields(left_panel, "Monthly debt value:")
+        ttk.Label(left_panel, text="Prioritization classification:", 
+                font=(self.font_family, 9, 'bold'), background="white"
+                ).pack(anchor="w", padx=25, pady=(4,2))
+        
+        btn_frame = tk.Frame(left_panel, bg="white")
+        btn_frame.pack(fill=tk.X, padx=25, pady=(0,10))
+
+        #Setup inline selector buttons
+        button_config = [
+            ("High priority", "!!! Critical", "#d9534f", (0, 4)),
+            ("Medium priority", "!! Medium", "#f78605", 2),
+            ("Low priority", "! Low", "#5cb85c", (2, 0))
+        ]
+
+        self.priority_buttons = {}
+
+        for level, label, active_color, padding in button_config:
+            #High is active first
+            is_high = (level == "High priority")
+
+            #Sets button color
+            if is_high:
+                bg_color = active_color
+                fg_color = "white"
+            else:
+                bg_color = "#f5f5f5"
+                fg_color = active_color
+
+            btn = tk.Button(
+                btn_frame, text=label, font=(self.font_family, 9, 'bold'),
+                bg=bg_color, fg=fg_color, relief=tk.FLAT, bd=0)
+
+            btn.config(command=lambda prio=level, b=btn: self.debt_mgr.set_priority(prio, b, self.priority_buttons))
+            btn.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=padding, ipady=3)
+            self.priority_buttons[level] = (btn, active_color)
 
         #Add debt buttons
         debt_btn_frame = tk.Frame(left_panel, bg="white")
         debt_btn_frame.pack(fill=tk.X, padx=20, pady=5)
 
         ttk.Button(debt_btn_frame, text="Add Debt", style="Success.TButton",
-                command=self.add_debt).pack(side=tk.LEFT, 
-                fill=tk.X, expand=True, padx=(4, 0))
+                command=lambda: self.debt_mgr.submit_debt(self.debt_name_input, 
+                self.debt_amount_input, self.debt_cat_var)).pack(
+                side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 0))
         
         ttk.Button(debt_btn_frame, text="Undo Last Debt", style="Danger.TButton",
-                command=self.undo_debt).pack(side=tk.RIGHT, fill=tk.X, 
+                command=self.debt_mgr.undo_debt).pack(side=tk.RIGHT, fill=tk.X, 
                 expand=True, padx=(0, 4), pady=3)
     
         #The Debt listbox
         self.debt_listbox = tk.Listbox(left_panel, height=4, font=(self.font_family, 9), 
                 bd=1, relief=tk.SOLID, highlightthickness=0, fg="#555555")
         self.debt_listbox.pack(fill=tk.X, padx=20, pady=5)
-
-        #Calculate button
-        ttk.Button(left_panel, text="Calculate and update chart", 
-                style="Primary.TButton", command=self.calculate_income
-                ).pack(fill=tk.X, padx=25, pady=(15,10), ipady=4)
 
         #Storage buttons
         storage_frame = tk.Frame(left_panel, bg="white")
@@ -161,37 +208,6 @@ class D2I_GUIapp:
         self.side_text.pack(fill=tk.BOTH, expand=True, padx=25, pady=(0, 20))
         self.update_sidebar("System standby", ["Waiting for user inputs"])
 
-    def add_debt(self):
-        try:
-            debt_amount = float(self.debt_input.get())
-            if debt_amount <= 0:
-                raise ValueError
-            self.financial_data['debt_collection'].append(debt_amount)
-            self.debt_listbox.insert(tk.END, f"${debt_amount:.2f} / month")
-            self.debt_input.delete(0, tk.END)
-        except ValueError:
-            # Handle non-numeric input for debt with an error message
-            messagebox.showerror("Error", "Enter a valid positive number for debt.")            
-
-    def debt_categorization(self):
-        popup = tk.Toplevel(self.root)
-        popup.title('Debt type')
-        popup.geometry('340x380')
-        popup.resizable(False, False)
-        popup.grab_set()
-        
-        popup.configure('white')
-
-
-        category_types = ['Bills', 'Transportation', 'Entertainment', 'Food/Restaurants']
-
-    def undo_debt(self):
-        if self.financial_data['debt_collection']:
-            self.financial_data['debt_collection'].pop()
-            self.debt_listbox.delete(tk.END)
-        else:
-            messagebox.showwarning("Undo debt error", "There are no debts to remove.")
-
     def calculate_income(self):
         try:
             gross_income = float(self.gross_input.get() if self.gross_input.get() else 0)
@@ -208,7 +224,7 @@ class D2I_GUIapp:
             if interval == "Weekly":
                 multiplier = 52
             elif interval == "Bi-Weekly":
-                multiplier = 24
+                multiplier = 26
             else:
                 multiplier = 12
 
@@ -224,10 +240,10 @@ class D2I_GUIapp:
 
             self.financial_data['gross_income'] = annual_gross
             self.financial_data['net_income'] = annual_net
-            self.financial_data['monthly_debt'] = sum(self.financial_data['debt_collection'])
+            self.financial_data['monthly_debt'] = sum(debt['amount'] for debt in self.financial_data['debt_collection'])
             self.financial_data['yearly_debt'] = (self.financial_data['monthly_debt'] * 12)
 
-            if self.placeholder_label:
+            if self.placeholder_label and self.placeholder_label.winfo_exists():
                 self.placeholder_label.destroy()
                 self.placeholder_label = None
 
@@ -242,17 +258,24 @@ class D2I_GUIapp:
 
         net_income = self.financial_data['net_income']
         yearly_debt = self.financial_data['yearly_debt']
-        remainder = net_income - yearly_debt
-
+        remainder = max(0, net_income - yearly_debt)
+        category_totals = self.debt_mgr.get_category_total()
+        
         #label setup
-        labels = ['Total debt', 'Remaining money']
-        sizes = [yearly_debt, max(0, remainder)]
-        colors=[COLOR_ACCENT, COLOR_PRIMARY]
+        labels, sizes, colors = [], [], []
+        theme_colors = ["#d9534f", "#f78605", "#5bc0de", "#5cb85c", "#777777"]
 
-        if remainder < 0:
-            labels = ['Negative by: ', 'Money left over: ']
-            sizes = [yearly_debt, max(0, remainder)]
-            colors = [COLOR_ACCENT, COLOR_PRIMARY]
+        for color, categ in enumerate (self.debt_mgr.categories):
+            val = category_totals[categ]
+            if val > 0:
+                labels.append(categ)
+                sizes.append(val)
+                colors.append(theme_colors[color])
+
+        if remainder >= 0 or not labels:
+            labels.append('Savings/liquid')
+            sizes.append(remainder)
+            colors.append(COLOR_PRIMARY)
 
         fig, ax = plt.subplots(figsize=(4, 4), dpi=100)
         fig.patch.set_facecolor("white")
@@ -266,28 +289,44 @@ class D2I_GUIapp:
         ax.set_title("Annual Finance tracker", fontname=self.font_family, fontsize=11, weight='bold', color="#444444")
 
         def hover_display(event):
-            if event.inaxes == ax:
-                for i, wedge in enumerate(wedges):
-                    contained, _ = wedge.contains(event)
-                    if contained:
-                        wedge.set_alpha(0.7)
-                        label_target = labels[i]
-                        context = 'debt' if 'debt' in label_target.lower() else 'liquid'
-                        self.update_sidebar(label_target, self.get_breakdown(context))
-                        fig.canvas.draw_idle()
-                        return
-                
-                #Remove display if the cursor goes outside of range
+            if event.inaxes != ax:
+                return
+            
+            hover_detect = self.handle_wedge_hover(event, wedges, labels, fig)
+
+            #Remove display if the cursor goes outside of range
+            if not hover_detect:
                 for wedge in wedges:
                     wedge.set_alpha(1.0)
                 self.update_sidebar("Global Metrics", self.get_breakdown('all'))
                 fig.canvas.draw_idle()
-
+                
         fig.canvas.mpl_connect("motion_notify_event", hover_display)
 
         canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
         canvas.draw()
         canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    def handle_wedge_hover(self, event, wedges, labels, fig):
+        for i, wedge in enumerate(wedges):
+            contained, _ = wedge.contains(event)
+            if not contained:
+                continue
+
+            wedge.set_alpha(0.7)
+            label_target = labels[i]
+
+            if label_target == "Savings/liquid":
+                self.update_sidebar(label_target, self.get_breakdown("liquid"))
+            else:
+                self.update_sidebar(
+                    f"{label_target} Summary",
+                    self.debt_mgr.get_category(label_target)
+                )
+
+            fig.canvas.draw_idle()
+            return True
+        return False
 
     def get_breakdown(self, scope):
         fd = self.financial_data
@@ -296,6 +335,8 @@ class D2I_GUIapp:
             dti = ((fd['monthly_debt'] / (fd['net_income'] / 12)) * 100 )
         else:
             dti = 0
+
+        high_p, med_p, low_p = self.debt_mgr.get_priority_total()
 
         debt_breakdown = [
             "---DEBT BREAKDOWN---",

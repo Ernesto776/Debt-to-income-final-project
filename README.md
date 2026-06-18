@@ -22,3 +22,18 @@ I removed the spaces between the '=' of the code inside of parameters. Theres no
 ## Update: 6/15/26 (GUI branch)
 
 Theres a QoL issue in the dropdown menu which is shown when the menu is extended, tapping the menu again does not get rid of the extended menu. Merged the GUI branch with the feature branch.
+
+## Update: 6/16/26 (Post Merge)
+
+Today I wanted to see what would happen if the user had the debt exceed the income and what happened was that the pie chart just turned all red (which is what I expected). What I would want to implement instead is having a secondary "pie" appear on top of the pie chart but only as big as the percentage as the first pie chart similar to the stamina system in TLOZ: BOTW.
+
+## Update: 6/17/26
+This may unfortunately be the last update for a while because of school 💔🥀, so here's some reminders of what to add later on:
+* Add the ability to scroll on the menus, for example, some buttons or activities may be inaccessible if the window is minimized, or have it be scalable to the window.
+* For the money investments, make the money a green color since its a positive debt, it should visually reflect so.
+* For the secondary pie chart (Whenever it is implemented (prefereably on click)) we can group serparate baby slices with the same priority colors that theyre flagged with. 
+* We can also add sortments so that when toggled the priorities flip to the users choice.
+* Some people also have more that one income, we would have to implement the ability for people to add multiple incomes, but should we segregate their looks? so far im thinking....probably not...
+* Fix the dropdown menus
+* Add the ability to edit previous entries, for example, credit card mimimums are variable to the spending, with the ability to edit, if its deep in there they wont need to delete a ton of entries just to edit one thing
+* Add little ? buttons so if a person is confused they can click it and a small window will appear to give a brief description.
